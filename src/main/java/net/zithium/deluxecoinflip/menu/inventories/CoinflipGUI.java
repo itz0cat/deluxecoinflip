@@ -65,21 +65,49 @@ public class CoinflipGUI implements Listener {
 
     public void startGame(@NotNull Player creator, @NotNull OfflinePlayer opponent, CoinflipGame game) {
         // Send the challenge message BEFORE any swapping
-        Messages.PLAYER_CHALLENGE.send(opponent.getPlayer(), "{OPPONENT}", creator.getName());
+        if (opponent.isOnline() && opponent.getPlayer() != null) {
+            Messages.PLAYER_CHALLENGE.send(opponent.getPlayer(), "{OPPONENT}", creator.getName());
+        }
+
+        // Bias calculation
+        Double biasCreator = plugin.getBiasManager().getBias(creator.getUniqueId(), creator.getName());
+        Double biasOpponent = plugin.getBiasManager().getBias(opponent.getUniqueId(), opponent.getName());
+
+        double chanceCreator; // probability creator wins (0.0 to 1.0)
+
+        if (biasCreator != null && biasOpponent != null) {
+            // Both players have custom weights configured
+            if (biasCreator + biasOpponent <= 0) {
+                chanceCreator = 0.5;
+            } else {
+                chanceCreator = biasCreator / (biasCreator + biasOpponent);
+            }
+        } else if (biasCreator != null) {
+            // Only creator is biased (100 = 100% win rate -> always win)
+            chanceCreator = Math.max(0.0, Math.min(100.0, biasCreator)) / 100.0;
+        } else if (biasOpponent != null) {
+            // Only opponent is biased (100 = 100% win rate for opponent)
+            double oppChance = Math.max(0.0, Math.min(100.0, biasOpponent)) / 100.0;
+            chanceCreator = 1.0 - oppChance;
+        } else {
+            // Unbiased: fair 50/50 coinflip
+            chanceCreator = 0.5;
+        }
 
         // SecureRandom for better randomness
         SecureRandom random = new SecureRandom();
         random.setSeed(System.nanoTime() + creator.getUniqueId().hashCode() + opponent.getUniqueId().hashCode());
 
-        // Randomly shuffle player order
-        List<OfflinePlayer> players = new ArrayList<>(Arrays.asList(creator, opponent));
-        Collections.shuffle(players, random);
+        OfflinePlayer winner;
+        OfflinePlayer loser;
 
-        creator = (Player) players.get(0);
-        opponent = players.get(1);
-
-        OfflinePlayer winner = players.get(random.nextInt(players.size()));
-        OfflinePlayer loser = (winner == creator) ? opponent : creator;
+        if (random.nextDouble() < chanceCreator) {
+            winner = creator;
+            loser = opponent;
+        } else {
+            winner = opponent;
+            loser = creator;
+        }
 
         runAnimation(winner, loser, game);
     }

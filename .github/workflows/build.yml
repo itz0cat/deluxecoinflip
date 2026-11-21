@@ -1,0 +1,50 @@
+name: Build DeluxeCoinflip Plugin
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build DeluxeCoinflip ShadowJar
+        run: ./gradlew shadowJar --stacktrace --no-daemon
+
+      - name: Verify Plugin Jar Structure
+        run: |
+          ls -la build/libs/
+          for jarfile in build/libs/*.jar; do
+            echo "=== Validating $jarfile ==="
+            jar tf "$jarfile" | grep "plugin.yml" || true
+            jar tf "$jarfile" | grep "DeluxeCoinflipPlugin" || true
+            jar tf "$jarfile" | grep "BiasManager" || true
+            jar tf "$jarfile" | grep "BiasCommand" || true
+          done
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deluxecoinflip-jars
+          path: build/libs/*.jar
+          retention-days: 30

@@ -68,7 +68,88 @@ public class CoinflipCommand extends BaseCommand {
     @Subcommand("help")
     public void helpSubCommand(final CommandSender sender) {
         Messages.HELP_DEFAULT.send(sender, "{PROVIDERS}", economyManager.getEconomyProviders().values().stream().map(p -> p.getDisplayName().toLowerCase()).collect(Collectors.joining(", ")));
-        if (sender.hasPermission("coinflip.admin")) Messages.HELP_ADMIN.send(sender);
+        if (sender.hasPermission("coinflip.admin")) {
+            Messages.HELP_ADMIN.send(sender);
+            sender.sendMessage(ColorUtil.color("&e/bias <add|set|remove|check|list|clear> &7- Coinflip player win bias controls"));
+        }
+    }
+
+    @Subcommand("bias add")
+    @CommandPermission("coinflip.admin")
+    @CommandCompletion("@players")
+    public void biasAddSubCommand(final CommandSender sender, String playerName, @Optional Double weight) {
+        double finalWeight = (weight != null) ? weight : 100.0;
+        if (finalWeight < 0.0) {
+            sender.sendMessage(ColorUtil.color("&cWeight cannot be negative!"));
+            return;
+        }
+        var entry = plugin.getBiasManager().setBias(playerName, finalWeight);
+        if (finalWeight >= 100.0) {
+            sender.sendMessage(ColorUtil.color("&aPlayer &e" + entry.getName() + " &awill now &6&lALWAYS WIN &aall coinflips (weight: &e" + finalWeight + "%&a)."));
+        } else {
+            sender.sendMessage(ColorUtil.color("&aSet coinflip win weight for &e" + entry.getName() + " &ato &e" + finalWeight + "%&a."));
+        }
+    }
+
+    @Subcommand("bias set|bias weight")
+    @CommandPermission("coinflip.admin")
+    @CommandCompletion("@players")
+    public void biasSetSubCommand(final CommandSender sender, String playerName, double weight) {
+        if (weight < 0.0) {
+            sender.sendMessage(ColorUtil.color("&cWeight cannot be negative!"));
+            return;
+        }
+        var entry = plugin.getBiasManager().setBias(playerName, weight);
+        sender.sendMessage(ColorUtil.color("&aUpdated coinflip win weight for &e" + entry.getName() + " &ato &e" + weight + "%&a."));
+    }
+
+    @Subcommand("bias remove|bias delete")
+    @CommandPermission("coinflip.admin")
+    @CommandCompletion("@players")
+    public void biasRemoveSubCommand(final CommandSender sender, String playerName) {
+        boolean removed = plugin.getBiasManager().removeBias(playerName);
+        if (removed) {
+            sender.sendMessage(ColorUtil.color("&aRemoved coinflip bias for &e" + playerName + "&a. Coinflips are now standard 50/50."));
+        } else {
+            sender.sendMessage(ColorUtil.color("&cPlayer &e" + playerName + " &cdoes not have an active bias configured."));
+        }
+    }
+
+    @Subcommand("bias list")
+    @CommandPermission("coinflip.admin")
+    public void biasListSubCommand(final CommandSender sender) {
+        var entries = plugin.getBiasManager().getAll();
+        if (entries.isEmpty()) {
+            sender.sendMessage(ColorUtil.color("&eThere are currently no players with active coinflip bias."));
+            return;
+        }
+        sender.sendMessage(ColorUtil.color("&8&m----------------------------------------"));
+        sender.sendMessage(ColorUtil.color("&6&lConfigured Coinflip Biases (" + entries.size() + "):"));
+        for (var entry : entries) {
+            String winText = entry.getWeight() >= 100.0 ? "&c&lALWAYS WINS" : "&e" + entry.getWeight() + "%";
+            sender.sendMessage(ColorUtil.color(" &8- &f" + entry.getName() + " &7(" + (entry.getUuid() != null ? entry.getUuid() : "offline") + "): " + winText));
+        }
+        sender.sendMessage(ColorUtil.color("&8&m----------------------------------------"));
+    }
+
+    @Subcommand("bias clear")
+    @CommandPermission("coinflip.admin")
+    public void biasClearSubCommand(final CommandSender sender) {
+        int count = plugin.getBiasManager().getAll().size();
+        plugin.getBiasManager().clear();
+        sender.sendMessage(ColorUtil.color("&aCleared &e" + count + " &aconfigured coinflip player biases."));
+    }
+
+    @Subcommand("bias check")
+    @CommandPermission("coinflip.admin")
+    @CommandCompletion("@players")
+    public void biasCheckSubCommand(final CommandSender sender, String playerName) {
+        Double bias = plugin.getBiasManager().getBias(null, playerName);
+        if (bias != null) {
+            sender.sendMessage(ColorUtil.color("&aPlayer &e" + playerName + " &ahas an active bias of &6" + bias + "%&a win weight."));
+        } else {
+            sender.sendMessage(ColorUtil.color("&ePlayer &f" + playerName + " &ehas no active bias (standard 50/50)."));
+        }
     }
 
     @Subcommand("about")

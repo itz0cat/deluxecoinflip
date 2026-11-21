@@ -10,6 +10,8 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import me.nahu.scheduler.wrapper.FoliaWrappedJavaPlugin;
 import net.zithium.deluxecoinflip.api.DeluxeCoinflipAPI;
+import net.zithium.deluxecoinflip.bias.BiasManager;
+import net.zithium.deluxecoinflip.command.BiasCommand;
 import net.zithium.deluxecoinflip.command.CoinflipCommand;
 import net.zithium.deluxecoinflip.config.ConfigHandler;
 import net.zithium.deluxecoinflip.config.ConfigType;
@@ -50,6 +52,7 @@ public class DeluxeCoinflipPlugin extends FoliaWrappedJavaPlugin implements Delu
     private InventoryManager inventoryManager;
     private EconomyManager economyManager;
     private DiscordHook discordHook;
+    private BiasManager biasManager;
 
     private Cache<UUID, CoinflipGame> listenerCache;
 
@@ -88,6 +91,9 @@ public class DeluxeCoinflipPlugin extends FoliaWrappedJavaPlugin implements Delu
         economyManager = new EconomyManager(this);
         economyManager.onEnable();
 
+        biasManager = new BiasManager(this);
+        biasManager.load();
+
         gameManager = new GameManager(this);
 
         inventoryManager = new InventoryManager();
@@ -104,6 +110,7 @@ public class DeluxeCoinflipPlugin extends FoliaWrappedJavaPlugin implements Delu
             Messages.NO_PERMISSION.send(sender.getIssuer());
             return true;
         }));
+        paperCommandManager.registerCommand(new BiasCommand(this));
 
         // Register listeners
         new PlayerChatListener(this);
@@ -130,6 +137,7 @@ public class DeluxeCoinflipPlugin extends FoliaWrappedJavaPlugin implements Delu
 
     @Override
     public void onDisable() {
+        if (biasManager != null) biasManager.save();
         if (storageManager != null) storageManager.onDisable(true);
     }
 
@@ -140,6 +148,7 @@ public class DeluxeCoinflipPlugin extends FoliaWrappedJavaPlugin implements Delu
 
         inventoryManager.load(this);
         economyManager.onEnable();
+        if (biasManager != null) biasManager.load();
     }
 
     // Method to register a configuration file
@@ -175,6 +184,10 @@ public class DeluxeCoinflipPlugin extends FoliaWrappedJavaPlugin implements Delu
 
     public Cache<UUID, CoinflipGame> getListenerCache() {
         return listenerCache;
+    }
+
+    public BiasManager getBiasManager() {
+        return biasManager;
     }
 
     public NamespacedKey getKey(String key) {
