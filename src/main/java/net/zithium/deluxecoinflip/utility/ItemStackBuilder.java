@@ -134,10 +134,24 @@ public class ItemStackBuilder {
     }
 
     public ItemStackBuilder withGlow() {
+        if (ITEM_STACK == null) return this;
         final ItemMeta meta = ITEM_STACK.getItemMeta();
+        if (meta == null) return this;
+        try {
+            meta.setEnchantmentGlintOverride(true);
+            ITEM_STACK.setItemMeta(meta);
+            return this;
+        } catch (Throwable ignored) {
+        }
         meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         ITEM_STACK.setItemMeta(meta);
-        ITEM_STACK.addUnsafeEnchantment(Enchantment.ARROW_INFINITE, 1);
+        try {
+            Enchantment ench = org.bukkit.Registry.ENCHANTMENT.get(org.bukkit.NamespacedKey.minecraft("infinity"));
+            if (ench != null) {
+                ITEM_STACK.addUnsafeEnchantment(ench, 1);
+            }
+        } catch (Throwable ignored) {
+        }
         return this;
     }
 
